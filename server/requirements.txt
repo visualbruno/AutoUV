@@ -1,0 +1,4 @@
+# AutoUV web API. Install the core deps too: pip install -r ../requirements.txt
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9

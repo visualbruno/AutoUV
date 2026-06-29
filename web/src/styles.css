@@ -1,0 +1,510 @@
+/* ---------------------------------------------------------------------------
+   AutoUV web — "drafting sheet" identity.
+   Unwrapping is map projection: a curved surface cut and flattened onto a
+   measured sheet. So the page is a dark cutting-mat canvas with a faint
+   graticule, brass drafting ink for anything interactive, corner registration
+   marks as the signature, and a dashed "seam" motif for dividers. The colour
+   payoff lives entirely in the returned atlas image.
+--------------------------------------------------------------------------- */
+
+:root {
+  --canvas: #14161b;
+  --sheet: #1b1e25;
+  --line: #2b303b;
+  --line-soft: #21252d;
+  --ink: #eceef2;
+  --faint: #868d9c;
+  --brass: #e0a458;
+  --brass-dim: #b9863f;
+  --seam: #ff5c7a;
+  --good: #5fd29a;
+
+  --grid: 28px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* the measured cutting-mat graticule behind everything */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(var(--line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+  background-size: var(--grid) var(--grid);
+  -webkit-mask-image: radial-gradient(
+    ellipse 90% 80% at 50% 38%,
+    #000 55%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 90% 80% at 50% 38%,
+    #000 55%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: clamp(28px, 6vw, 64px) clamp(20px, 5vw, 40px) 48px;
+}
+
+/* corner registration marks — the signature device */
+.reg {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.6;
+}
+.reg::before,
+.reg::after {
+  content: "";
+  position: absolute;
+  background: var(--brass-dim);
+}
+.reg::before {
+  width: 100%;
+  height: 1px;
+  top: 50%;
+}
+.reg::after {
+  height: 100%;
+  width: 1px;
+  left: 50%;
+}
+.reg-tl {
+  top: 18px;
+  left: 18px;
+}
+.reg-tr {
+  top: 18px;
+  right: 18px;
+}
+.reg-bl {
+  bottom: 18px;
+  left: 18px;
+}
+.reg-br {
+  bottom: 18px;
+  right: 18px;
+}
+
+/* ----------------------------------------------------------------- masthead */
+.masthead {
+  text-align: center;
+  margin-bottom: clamp(26px, 5vw, 44px);
+}
+.wordmark {
+  font-family: "Archivo", sans-serif;
+  font-weight: 700;
+  font-size: clamp(38px, 9vw, 68px);
+  letter-spacing: 0.14em;
+  line-height: 0.95;
+  text-indent: 0.14em; /* balance the tracking */
+}
+.wordmark span {
+  color: var(--brass);
+}
+.thesis {
+  max-width: 46ch;
+  margin: 16px auto 0;
+  color: var(--faint);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* -------------------------------------------------------------------- sheet */
+.sheet {
+  position: relative;
+  background: var(--sheet);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: clamp(20px, 4vw, 34px);
+  box-shadow: 0 24px 60px -40px #000;
+}
+/* edge tick marks, like a ruler down two sides of the sheet */
+.sheet-edge {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.5;
+}
+.sheet-edge-x {
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 8px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--line) 0 1px,
+    transparent 1px var(--grid)
+  );
+}
+.sheet-edge-y {
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 8px;
+  background-image: repeating-linear-gradient(
+    0deg,
+    var(--line) 0 1px,
+    transparent 1px var(--grid)
+  );
+}
+
+/* ----------------------------------------------------------------- dropzone */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 280px;
+  border: 1.5px dashed var(--line);
+  border-radius: 2px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.dropzone:hover,
+.dropzone.is-dragging {
+  border-color: var(--brass);
+  background: #1e222b;
+}
+.dropzone.has-file {
+  border-style: solid;
+  border-color: var(--brass-dim);
+}
+.drop-glyph {
+  font-size: 40px;
+  color: var(--brass);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.drop-title {
+  font-family: "Archivo", sans-serif;
+  font-weight: 600;
+  font-size: 19px;
+}
+.drop-sub {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: var(--faint);
+  letter-spacing: 0.02em;
+}
+
+/* ------------------------------------------------------------------- result */
+.result {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: clamp(18px, 3vw, 30px);
+  align-items: start;
+}
+.preview {
+  margin: 0;
+}
+.preview img {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: #0f1115;
+}
+.preview figcaption {
+  margin-top: 10px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.readout-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  margin: 2px 0 18px;
+  word-break: break-all;
+}
+.stat-grid {
+  margin: 0 0 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.stat {
+  background: var(--sheet);
+  padding: 12px 14px;
+}
+.stat dt {
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.stat dd {
+  margin: 4px 0 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.stat dd.good {
+  color: var(--good);
+}
+
+.downloads {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ------------------------------------------------------------------ buttons */
+.btn {
+  font-family: "Archivo", sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  background: #232831;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 11px 18px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease,
+    transform 0.05s ease;
+}
+.btn:hover {
+  border-color: var(--brass-dim);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn-primary {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: #1a1206;
+}
+.btn-primary:hover {
+  background: #ecb066;
+  border-color: #ecb066;
+}
+.btn-primary:disabled {
+  background: #3a342a;
+  border-color: #3a342a;
+  color: #6f6857;
+  cursor: not-allowed;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--faint);
+}
+.btn-ghost:hover {
+  color: var(--ink);
+}
+
+/* ----------------------------------------------------------------- controls */
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 36px;
+  margin: 30px 4px 0;
+}
+.control label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: "Archivo", sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+}
+.control-val {
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--brass);
+}
+.control-hint {
+  margin: 7px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--faint);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2px;
+  margin: 14px 0 2px;
+  background: var(--line);
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--brass);
+  border: 2px solid var(--canvas);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--canvas);
+  border-radius: 50%;
+  background: var(--brass);
+}
+
+.control-toggle {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.toggle {
+  flex: none;
+  width: 42px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #232831;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+.toggle .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--faint);
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+.toggle.on {
+  background: rgba(224, 164, 88, 0.18);
+  border-color: var(--brass);
+}
+.toggle.on .knob {
+  transform: translateX(18px);
+  background: var(--brass);
+}
+.toggle-label {
+  font-family: "Archivo", sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* -------------------------------------------------------------- action / fb */
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 30px 4px 0;
+}
+.btn-run {
+  font-size: 15px;
+  padding: 13px 30px;
+}
+.run-note {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: var(--faint);
+}
+.progress {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--brass-dim), var(--brass));
+  border-radius: 3px;
+  transition: width 0.25s ease;
+}
+.progress-label {
+  flex: none;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.error {
+  margin: 22px 4px 0;
+  padding: 13px 16px;
+  border: 1px solid #5a2a35;
+  border-left: 3px solid var(--seam);
+  border-radius: 2px;
+  background: #241a1e;
+  color: #ffb3c1;
+  font-size: 13px;
+  line-height: 1.5;
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* --------------------------------------------------------------------- foot */
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 48px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--faint);
+}
+.foot .seam {
+  flex: 1;
+  height: 1px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--line) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+@media (max-width: 640px) {
+  .result {
+    grid-template-columns: 1fr;
+  }
+  .controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
